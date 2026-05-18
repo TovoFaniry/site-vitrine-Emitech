@@ -100,7 +100,7 @@ function MemberCard({ membre, index, view, onClick }) {
         </div>
         <div className="list-info">
           <span className="list-pseudo">{membre.pseudo}</span>
-          <span className="list-nom">{membre.nom}</span>
+          <span className="list-nom">{">> "+membre.nom}</span>
         </div>
         <span className="badge-sm">{membre.post}</span>
         <span className="list-arrow">→</span>
@@ -274,7 +274,7 @@ export default function App() {
         <div className="flex justify-center mb-[10px]">
           <img className="w-[100px]" src="/img/Logo_Emitech.png" alt="" />
         </div>
-        <p className="footer-copy">© 2024 — Tous droits réservés</p>
+        <p className="footer-copy">© 2026 — Tous droits réservés</p>
       </footer>
 
       {selected && <MemberModal membre={selected} onClose={() => setSelected(null)} />}
