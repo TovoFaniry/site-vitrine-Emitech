@@ -30,9 +30,110 @@ const CloseIcon = () => (
     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
   </svg>
 );
+const LinkIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+);
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+);
+
+// ── Modal Lien (remplace QRModal) ────────────────────────────────────────────
+function ShareLinkModal({ membre, onClose }) {
+  const [copied, setCopied] = useState(false);
+  
+  // URL de la page avec le pseudo du membre
+  const memberUrl = `${window.location.origin}${window.location.pathname}?pseudo=${encodeURIComponent(membre.pseudo)}`;
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(memberUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Erreur copie:', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="modal-card" style={{ maxWidth: "450px", textAlign: "center" }}>
+        <button className="modal-close" onClick={onClose}><CloseIcon /></button>
+        <div style={{ padding: "20px 0 10px 0" }}>
+          <div style={{
+            width: "60px",
+            height: "60px",
+            background: "#e0e7ff",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto"
+          }}>
+            <LinkIcon />
+          </div>
+        </div>
+        <div className="modal-body">
+          <h2 style={{ fontSize: "20px", marginBottom: "8px" }}>Lien du profil</h2>
+          <p style={{ color: "#666", fontSize: "14px", marginBottom: "20px" }}>
+            Partagez ce lien pour que quelqu'un accède directement au profil de {membre.pseudo}
+          </p>
+          
+          <div style={{
+            background: "#f5f5f5",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+            wordBreak: "break-all",
+            fontSize: "13px",
+            fontFamily: "monospace"
+          }}>
+            {memberUrl}
+          </div>
+          
+          <button 
+            onClick={copyToClipboard}
+            style={{
+              background: copied ? "#10b981" : "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              justifyContent: "center",
+              width: "100%",
+              transition: "background 0.2s"
+            }}
+          >
+            <CopyIcon />
+            {copied ? "Copié !" : "Copier le lien"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Modal ────────────────────────────────────────────────────────────────────
-function MemberModal({ membre, onClose }) {
+function MemberModal({ membre, onClose, onOpenShareLink }) {
   useEffect(() => {
     const handleKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", handleKey);
@@ -73,6 +174,15 @@ function MemberModal({ membre, onClose }) {
               </a>
             )}
           </div>
+          <button 
+            onClick={onOpenShareLink}
+            style={{
+              color: "#2563eb",
+              cursor: "pointer",
+            }}
+          >
+            <LinkIcon /> 
+          </button>
         </div>
       </div>
     </div>
@@ -139,7 +249,7 @@ function MemberCard({ membre, index, view, onClick }) {
   );
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// Main App 
 export default function App() {
   const [membres, setMembres] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,10 +258,29 @@ export default function App() {
   const [view, setView] = useState("list");
   const [sort, setSort] = useState("id");
   const [selected, setSelected] = useState(null);
+  const [showShareLink, setShowShareLink] = useState(null);
 
   useEffect(() => {
     fetchMembres();
   }, []);
+
+  // Lecture du paramètre pseudo dans l'URL et ouverture automatique de la modale
+  useEffect(() => {
+    if (membres.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pseudoFromUrl = urlParams.get('pseudo');
+      
+      if (pseudoFromUrl) {
+        const member = membres.find(m => m.pseudo === pseudoFromUrl);
+        if (member) {
+          setSelected(member);
+          // Nettoyer l'URL sans recharger la page
+          const newUrl = `${window.location.pathname}`;
+          window.history.replaceState({}, '', newUrl);
+        }
+      }
+    }
+  }, [membres]);
 
   async function fetchMembres() {
     const { data, error } = await supabase
@@ -199,10 +328,6 @@ export default function App() {
 
   return (
     <>
-      <style>{`
-
-      `}</style>
-
       <header className="site-header">
         <p className="header-eyebrow">Notre Équipe</p>
         <div className="flex justify-center">
@@ -241,7 +366,6 @@ export default function App() {
         </div>
       </div>
 
-
       <main className="main">
         <p className="results-label">
           {filtered.length} résultat{filtered.length !== 1 ? "s" : ""}
@@ -277,7 +401,22 @@ export default function App() {
         <p className="footer-copy">© 2026 — Tous droits réservés</p>
       </footer>
 
-      {selected && <MemberModal membre={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <MemberModal 
+          membre={selected} 
+          onClose={() => setSelected(null)} 
+          onOpenShareLink={() => {
+            setShowShareLink(selected);
+            setSelected(null);
+          }}
+        />
+      )}
+      {showShareLink && (
+        <ShareLinkModal 
+          membre={showShareLink} 
+          onClose={() => setShowShareLink(null)} 
+        />
+      )}
     </>
   );
 }
