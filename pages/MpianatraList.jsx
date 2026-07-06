@@ -36,8 +36,30 @@ const CloseIcon = () => (
   </svg>
 );
 
+const CopyIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+  </svg>
+);
+
 // ── Modal pour afficher l'image en grand ────────────────────────────────────
 function ImageModal({ mpianatra, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  // URL de la page avec l'ID du membre
+  const memberUrl = `${window.location.origin}${window.location.pathname}?pseudo=${encodeURIComponent(mpianatra.id_mpianatra)}`;
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(memberUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Erreur copie:', err);
+    }
+  };
+
   useEffect(() => {
     const handleKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", handleKey);
@@ -46,7 +68,7 @@ function ImageModal({ mpianatra, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-card" style={{ maxWidth: "500px" }}>
+      <div className="modal-card" style={{ maxWidth: "450px" }}>
         <button className="modal-close" onClick={onClose}><CloseIcon /></button>
         <div className="modal-img-wrap">
           <img
@@ -61,8 +83,30 @@ function ImageModal({ mpianatra, onClose }) {
         <div className="modal-body" style={{ textAlign: "center" }}>
           <h2 className="modal-name">{mpianatra.name}</h2>
           <p className="modal-fullname" style={{ fontSize: "18px", fontFamily: "monospace", marginTop: "8px" }}>
-            📛 {mpianatra.matricule}
+            {mpianatra.matricule}
           </p>
+
+          <button 
+            onClick={copyToClipboard}
+            style={{
+              background: copied ? "#10b981" : "#2563eb",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              justifyContent: "center",
+              width: "100%",
+              transition: "background 0.2s"
+            }}
+          >
+            <CopyIcon />
+            {copied ? "Copié !" : "Copier le lien"}
+          </button>
         </div>
       </div>
     </div>
@@ -140,22 +184,42 @@ export default function MpianatraList() {
     fetchMpianatra();
   }, []);
 
-    async function fetchMpianatra() {
+  async function fetchMpianatra() {
     const { data, error } = await supabase
-        .from("membre")
-        .select("*")
-        .order("id_mpianatra", { ascending: true });
-    
+      .from("membre")
+      .select("*")
+      .order("id_mpianatra", { ascending: true });
+
     if (error) {
-        console.error("Erreur:", error);
+      console.error("Erreur:", error);
     } else {
-        console.log("DONNÉES BRUTES:", data);
-        console.log("PREMIER ÉLÉMENT:", data[0]);
+      console.log("DONNÉES BRUTES:", data);
+      console.log("PREMIER ÉLÉMENT:", data[0]);
     }
-    
+
     if (!error) setMpianatra(data || []);
     setLoading(false);
+  }
+
+  // 🔍 Détection du paramètre 'pseudo' dans l'URL pour ouvrir automatiquement le modal
+  useEffect(() => {
+    if (mpianatra.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pseudoFromUrl = urlParams.get('pseudo');
+
+      if (pseudoFromUrl) {
+        // Chercher le membre dont l'id_mpianatra correspond à la valeur
+        const member = mpianatra.find(m => String(m.id_mpianatra) === pseudoFromUrl);
+        if (member) {
+          setSelected(member);
+          // Nettoyer l'URL sans recharger la page
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, '', newUrl);
+        }
+      }
     }
+  }, [mpianatra]); // Déclenché quand les données sont chargées
+
   const filtered = useMemo(() => {
     let list = mpianatra.filter((m) => {
       const q = search.toLowerCase();
